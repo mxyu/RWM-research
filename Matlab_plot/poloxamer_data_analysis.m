@@ -86,6 +86,8 @@ lme_F = (-0.005721924 + 0.014171594) + time * (0.003176679 + -0.002878198);
 lme_G = (-0.005721924 + 0.017977245) + time * (0.003176679 + -0.002854279);
 lme_H = (-0.005721924 + 0.022062427) + time * (0.003176679 + -0.002752596);
 
+
+
 study = combine_expt_data(['A','E','D','F','H','G'], txt, data_num);
 study.title = 'Concentration/mm^2 over Time for 0, 1, and 4 Holes in PBS and 18% Poloxamer';
 study.lmes = {A_lme; E_lme; D_lme; F_lme ; H_lme; G_lme};
@@ -177,12 +179,21 @@ set(gca, 'TickLength',[0 0])
 lme_E = -0.01702287 + time * 0.00474436;
 lme_H = (-0.01702287 + 0.03336338) + time * ( 0.00474436 + -0.00432028);
 
+
+
 lme2 = {};
 lme2.intercept = -0.01702287;
 lme2.slope = 0.00474436;
+lme2.i_err = 0.02630766;
+lme2.s_err = 0.00010209;
 lme_ref = {};
 lme_ref.intercept = -0.01702287 + 0.03336338;
 lme_ref.slope = 0.00474436 + -0.00432028;
+lme_ref.i_err = 0.03327685;
+lme_ref.s_err = 0.00012914;
+
+lme2.CI = lme_std_err(lme2);
+lme_ref.CI = lme_std_err(lme_ref);
 
 b1 = plot_comparison_line_mat(lme_ref, lme2, 60);
 b2 = plot_comparison_line_mat(lme_ref, lme2, 120);
@@ -191,24 +202,28 @@ study = combine_expt_data(['E','H'], txt, data_num);
 study.title = 'Concentration/mm^2 over Time for 1 Hole in PBS vs 18% Poloxamer';
 study.lmes = {lme_E; lme_H };
 study.expt_names = {'PBS: 1 hole'; '18% Poloxamer: 1 hole'};
-study.axis = [0 170 0 0.2];
+study.axis = [0 165 0 0.6];
 study.x_axis_label = {'Time (min)'};
 study.y_axis_label = {'Concentration/mm^2'};
 
+
 f2 = figure('Name',study.title);
 p = [];
-for i = 1:length(study.data)
-    plot(study.time, study.data{i}, ...
-        'LineWidth', 1, ...
-        'color', COLORS.LIGHT{i});
-    hold on
-end
+
 for i = 1:length(study.data)
     p(i) = plot(study.time, study.lmes{i}, ...
         'LineWidth', 2, ...
         'color', COLORS.PRIMARY{i});
     hold on
 end
+
+% Error represented as shaded area
+e = fill( [lme2.CI.x  fliplr(lme2.CI.x)], [lme2.CI.lower fliplr(lme2.CI.upper)] , COLORS.PRIMARY{1} , 'LineStyle','none' );
+hold on
+h = fill( [lme_ref.CI.x  fliplr(lme_ref.CI.x)], [lme_ref.CI.lower fliplr(lme_ref.CI.upper)] , COLORS.PRIMARY{2} , 'LineStyle','none' );
+hold on
+set(e,'facealpha',.05)
+set(h,'facealpha',.05)
 
 for i = 1:size(b1,3)
     plot(b1(1,:,i), b1(2,:,i), ':', 'color', 'black', 'LineWidth', 1.5)
@@ -300,3 +315,25 @@ set(gca, 'TickLength',[0 0])
 %       'color', [0, 77, 128]/255);
 % %legend('Exp A', 'Exp B', 'Exp C', 'Exp D','Location','northwest')
 
+
+
+% 
+% % std err jank
+% lme_E_err_i = 0.02630766;
+% lme_E_err_s = 0.00010209;
+% 
+% lme_H_err_i = 0.03327685;
+% lme_H_err_s = 0.00012914;
+% 
+% lme_E_lower = -0.01702287 - 2*lme_E_err_i + time * (0.00474436 - lme_E_err_s*2);
+% lme_E_upper = -0.01702287 + 2*lme_E_err_i + time * (0.00474436 + lme_E_err_s*2);
+% lme_H_lower = (-0.01702287 + 0.03336338 - 2*lme_H_err_i) + time * ( 0.00474436 + -0.00432028 - 2*lme_H_err_s);
+% lme_H_upper = (-0.01702287 + 0.03336338 + 2*lme_H_err_i) + time * ( 0.00474436 + -0.00432028 + 2*lme_H_err_s);
+% 
+% % Error represented as shaded area
+% e = fill( [time(1), time(end), time(end), time(1)], [lme_E_lower(1), lme_E_lower(end), lme_E_upper(end), lme_E_upper(1)] , COLORS.PRIMARY{1} , 'LineStyle','none' );
+% hold on
+% h = fill( [time(1), time(end), time(end), time(1)], [lme_H_lower(1), lme_H_lower(end), lme_H_upper(end), lme_H_upper(1)] , COLORS.PRIMARY{2} , 'LineStyle','none' );
+% hold on
+% set(e,'facealpha',.05)
+% set(h,'facealpha',.05)
