@@ -46,6 +46,52 @@ study1.y_axis_label = {'Concentration/mm^2'};
 
 generate_lme_plots(study1, COLORS);
 
+%% Plot Study 1: A-D, Comparing different # holes, same hole diam, PBS
+% 95% CI instead of raw data
+lme_file = '/Users/michelle/Documents/2018_CUMC/Research/Matlab_plot/lmes.csv';
+M = csvread(lme_file);
+
+study = combine_expt_data(['A','B','C','D'], txt, data_num);
+study.title = 'Concentration/mm^2 over Time for 0, 1, 2, and 4 Holes in PBS';
+study.expt_names = {'0 holes'; '1 hole'; '2 holes'; '4 holes'};
+study.axis = [0 170 0 1.15];
+study.x_axis_label = {'Time (min)'};
+study.y_axis_label = {'Concentration/mm^2'};
+
+ref_val_intercept = 0;
+ref_val_slope = 0;
+study.lmes = {};
+for i = 1:size(M,1)/2
+    study.lmes{i} = {};
+    study.lmes{i}.intercept = M(i, 1) + ref_val_intercept;
+    study.lmes{i}.slope = M(i+size(M,1)/2) + ref_val_slope;
+    study.lmes{i}.val = study.lmes{i}.intercept + time * study.lmes{i}.slope;
+    study.lmes{i}.i_err = M(i,2);
+    study.lmes{i}.s_err = M(i+size(M,1)/2);
+    study.lmes{i}.CI = lme_std_err(study.lmes{i});
+%     ref_val_intercept = study.lmes{1}.intercept;
+%     rev_val_slope = study.lmes{1}.slope;
+end
+
+f2 = figure('Name',study.title);
+p = [];
+
+for i = 1:length(study.data)
+    p(i) = plot(study.time, study.lmes{i}.val, ...
+        'LineWidth', 2, ...
+        'color', COLORS.PRIMARY{i});
+    hold on
+end
+
+% Error represented as shaded area
+fi = [];
+for i = 1:length(study.data)
+    fi(i) = fill( [study.lmes{i}.CI.x  fliplr(study.lmes{i}.CI.x)], [study.lmes{i}.CI.lower fliplr(study.lmes{i}.CI.upper)] , COLORS.PRIMARY{1} , 'LineStyle','none' );
+    hold on
+    set(fi(i),'facealpha',.05)
+end
+
+
 %% Plot Study 2: A,D,E, Comparing different # holes, same hole AREA, PBS
 A_lme = -0.005721924 + time * 0.003176679;
 D_lme = -0.005721924 + 0.017743872 + time * ( 0.003176679 + 0.001505025);  
@@ -175,7 +221,7 @@ set(gca, 'TickLength',[0 0])
 
 
 %% Plot 1 hole, PBS vs 18% Poloxamer
-
+% 95% CIs
 lme_E = -0.01702287 + time * 0.00474436;
 lme_H = (-0.01702287 + 0.03336338) + time * ( 0.00474436 + -0.00432028);
 
@@ -202,7 +248,7 @@ study = combine_expt_data(['E','H'], txt, data_num);
 study.title = 'Concentration/mm^2 over Time for 1 Hole in PBS vs 18% Poloxamer';
 study.lmes = {lme_E; lme_H };
 study.expt_names = {'PBS: 1 hole'; '18% Poloxamer: 1 hole'};
-study.axis = [0 165 0 0.6];
+study.axis = [0 165 0 0.2];
 study.x_axis_label = {'Time (min)'};
 study.y_axis_label = {'Concentration/mm^2'};
 
