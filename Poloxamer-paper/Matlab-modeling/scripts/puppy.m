@@ -1,5 +1,5 @@
-%% RUN ME FIRST: get data struct, polynomial model
-filename = '/Users/harrychiang/Desktop/Research Year/RWM/Poloxamer/Matlab_plot/data_PBSandPOLOXAMER.xlsx';
+%% RUN ME FIRST: get data struct, Curve Fit model
+filename = '/Users/michelle/Documents/2018_CUMC/Research/Poloxamer-paper/data_PBSandPOLOXAMER.xlsx';
 [data_num,txt,raw] = xlsread(filename,2);
 time = unique(data_num(:,2));
 
@@ -9,19 +9,19 @@ data_case = 'G';
 
 study = combine_expt_data([data_case], txt, data_num);
 % 
-% p = [];
-% for i = 1:size(study.data{1},2)
-%     p(i) = plot(study.time, study.data{1}(:,i), ...
-%         'LineWidth', 1);
-%     hold on;
-% end
-% 
-% expt_numbers = {};
-% for i = 1:size(study.data{1},2)
-%     expt_numbers{i} = int2str(i);
-% end
+p = [];
+for i = 1:size(study.data{1},2)
+    p(i) = plot(study.time, study.data{1}(:,i), ...
+        'LineWidth', 1);
+    hold on;
+end
 
-% legend(p, expt_numbers)
+expt_numbers = {};
+for i = 1:size(study.data{1},2)
+    expt_numbers{i} = int2str(i);
+end
+
+legend(p, expt_numbers)
 % 
 % avg = [];
 % for i=1:size(study.data{1},1)
@@ -34,27 +34,27 @@ study = combine_expt_data([data_case], txt, data_num);
 % logx = log10(x(2:end));
 % logy = log10(y(2:end));
 
-%% Polynomial model
+%% Curve Fit model
 
 b1 = 0.003808;
 b2 = 0.58974;
 b3 = 0.0037554;
 syms x
 % plot(study.time, avg, 'b*')
-polyf = symfun(b1*x^b2 + b3, x);
-% fplot(polyf, 'Linewidth', 2)
-polydfdx = diff(polyf, x);
+curvef = symfun(b1*x^b2 + b3, x);
+% fplot(curvef, 'Linewidth', 2)
+curvedfdx = diff(curvef, x);
 %% Plot current over time
-% fplot(polydfdx, 'Linewidth', 2)
+% fplot(curvedfdx, 'Linewidth', 2)
 % axis([0 170 0 0.002])
 % ylabel("Flow (concentration/mm^2/min)", 'Fontsize', 20)
 % xlabel("Time (min)", 'Fontsize', 20)
 % set(gca,'fontsize',20)
 
 % Plot resistance over time
-Rt_poly = 1/polydfdx;
+Rt_curve = 1/curvedfdx;
 %{
-fplot(Rt_poly, 'Linewidth', 2)
+fplot(Rt_curve, 'Linewidth', 2)
 %axis([0 170 0 3750])
 ylabel("Resistance (min)", 'Fontsize', 20) % FIX THIS UNIT
 xlabel("Time (min)", 'Fontsize', 20)
@@ -63,7 +63,7 @@ hold on;
 %}
 %% Get diffusion constant by eye
 
-% Model: Polynomial
+% Model: Curve Fit
 p = [];
 
 
@@ -93,7 +93,7 @@ end
 
 p(1) = plot(time, f_pw, 'Linewidth', 2);
 hold on;
-p(2) = fplot(Rt_poly, 'Linewidth', 2);
+p(2) = fplot(Rt_curve, 'Linewidth', 2);
 hold on;
 
 %axis([0 170 0 3750])
@@ -176,34 +176,34 @@ study = combine_expt_data(['F'], txt, data_num);
 
 area = 10;
 
-% Polynomial fit
+% Curve Fit fit
 b1 = 0.003808;
 b2 = 0.58974;
 b3 = 0.0037554;
 syms x
-polyf = symfun(b1*x^b2 + b3, x);
-%polydfdx = diff(polyf, x); 
+curvef = symfun(b1*x^b2 + b3, x);
+%curvedfdx = diff(curvef, x); 
 % Convert to linspace
 time_min = 0;
 time_max = 165;
 time_points = 10^3;
 time = linspace(time_min,time_max,time_points);
 time_interval = (time_max-time_min)/time_points;
-ls_poly = [];
+ls_curve = [];
 for i = 1:size(time,2)
-    ls_poly(i) = double(polyf(time(i))); % convert sym to double for pw array
+    ls_curve(i) = double(curvef(time(i))); % convert sym to double for pw array
 end
 
-ls_poly2 = ls_poly(2:end);
-ls_poly1 = ls_poly(1:end-1);
-ls_polydiff = ls_poly2-ls_poly1;
-ls_polyderiv = ls_polydiff/(time_interval)*10;
+ls_curve2 = ls_curve(2:end);
+ls_curve1 = ls_curve(1:end-1);
+ls_curvediff = ls_curve2-ls_curve1;
+ls_curvederiv = ls_curvediff/(time_interval)*10;
 
-Rt_polyderiv = 1./ls_polyderiv;
-% plot(time(1:end-1), Rt_polyderiv)
+Rt_curvederiv = 1./ls_curvederiv;
+% plot(time(1:end-1), Rt_curvederiv)
 
 
-%Rt_poly = 1/polydfdx;
+%Rt_curve = 1/curvedfdx;
 %% Play with coefficients of model terms
 
 study = combine_expt_data(['H'], txt, data_num);
@@ -247,7 +247,7 @@ f1 = figure();
 p=[];
 p(1) = plot(time, R_total,'Linewidth', 2);
 hold on;
-p(2) = plot(time(1:end-1), Rt_polyderiv,'Linewidth', 2);
+p(2) = plot(time(1:end-1), Rt_curvederiv,'Linewidth', 2);
 hold on;
 legend(p, ["R\_piecewise" "R\_datafit"]);
 %
@@ -259,9 +259,9 @@ time_short = time(2:end);
 R_total_integral = cumtrapz(time_short,R_total_recip_short);
 R_integral_normalized = R_total_integral/10;
 
-% Test trapezoidal integration on Rtpolyderiv
-Rt_polyderiv_recip = 1./Rt_polyderiv;
-Rt_integral = cumtrapz(time_short,Rt_polyderiv_recip);
+% Test trapezoidal integration on Rtcurvederiv
+Rt_curvederiv_recip = 1./Rt_curvederiv;
+Rt_integral = cumtrapz(time_short,Rt_curvederiv_recip);
 Rt_integral_normalized = Rt_integral/10;
 
 % Plot final model with raw data
@@ -290,7 +290,7 @@ model_1hole = R_integral_normalized;
 study = combine_expt_data(['G'], txt, data_num);
 
 syms t
-a = 0.0001; % in meters (diameter 100 microns, a is radius)
+a = 0.00005; % in meters (diameter 100 microns, a is radius)
 D = 10^-10; %-15, -10
 factor = 10^9.5;  % 13.1, 9.5?
 k = factor*D;
@@ -328,9 +328,9 @@ f1 = figure();
 p=[];
 p(1) = plot(time, R_total,'Linewidth', 2);
 hold on;
-p(2) = plot(time(1:end-1), Rt_polyderiv,'Linewidth', 2);
-hold on;
-legend(p, ["model" "data fit"]);
+%p(2) = plot(time(1:end-1), Rt_curvederiv,'Linewidth', 2);
+%hold on;
+%legend(p, ["model" "data fit"]);
 %
 
 % Trapezoidal integration
@@ -340,9 +340,9 @@ time_short = time(2:end);
 R_total_integral = cumtrapz(time_short,R_total_recip_short);
 R_integral_normalized = R_total_integral/10;
 
-% Test trapezoidal integration on Rtpolyderiv
-Rt_polyderiv_recip = 1./Rt_polyderiv;
-Rt_integral = cumtrapz(time_short,Rt_polyderiv_recip);
+% Test trapezoidal integration on Rtcurvederiv
+Rt_curvederiv_recip = 1./Rt_curvederiv;
+Rt_integral = cumtrapz(time_short,Rt_curvederiv_recip);
 Rt_integral_normalized = Rt_integral/10;
 
 % Plot final model with raw data
@@ -350,11 +350,11 @@ f2 = figure;
 p=[];
 p(1) = plot(time_short, R_integral_normalized, 'Linewidth', 2);
 hold on;
-p(2) = plot(time_short, Rt_integral_normalized, 'Linewidth', 2);
-hold on;
-legend(p, ["model" "data fit"]);
+%p(2) = plot(time_short, Rt_integral_normalized, 'Linewidth', 2);
+%hold on;
+%legend(p, ["model" "data fit"]);
 
-offset = 3;
+offset = 1;
 for i = 1:size(study.data{1},2)
     p(i+offset) = plot(study.time, study.data{1}(:,i), ...
         'LineWidth', 0.25);
@@ -403,4 +403,7 @@ for k = 1:size(mat,1)
 end
 
 %legend(p, labels);
+
+
+%% Membrane resistance calculations based on back-calculated membrane area
 
