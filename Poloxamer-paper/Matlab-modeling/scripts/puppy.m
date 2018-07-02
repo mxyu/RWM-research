@@ -7,6 +7,15 @@ data_case = 'H';
 % H = 1 large hole (200um diameter) in 18% Poloxamer
 % G = 4 small holes (100um diameter) in 18% Poloxamer
 
+RhoB_mass = 2.4*10^-4; % in grams
+mass_conversion = 6.6*RhoB_mass/1000; % Convert conc/mm^2 data to kg
+% Resistance of membrane calculation
+no_hole_slope = 3*10^-4;
+RhoB_mass_frac = 4.8*10^5; % unitless
+area_membrane = 6.6; %in mm^2
+R_membrane = RhoB_mass_frac / (no_hole_slope*area_membrane/60 * RhoB_mass / 1000);
+
+
 study = combine_expt_data([data_case], txt, data_num);
 % 
 p = [];
@@ -45,18 +54,6 @@ for i=1:length(expt_arr)
     [t, d] = get_time_by_data_matrix(data_num(idx_by_exp_type(txt,expt_arr(i)),[2 OUTCOME_COL]));
     study.mem_area{i} = d;
 end
-
-
-%% Curve Fit model for 1 hole
-
-b1 = 0.003808;
-b2 = 0.58974;
-b3 = 0.0037554;
-syms x
-% plot(study.time, avg, 'b*')
-curvef = symfun(b1*x^b2 + b3, x);
-% fplot(curvef, 'Linewidth', 2)
-curvedfdx = diff(curvef, x);
 
 %% Plot current over time
 % fplot(curvedfdx, 'Linewidth', 2)
@@ -177,29 +174,20 @@ set(gca,'fontsize',20)
 legend(p(3:end), ["model" expt_numbers])
 
 
-%% Resistance of 0 holes
-
-[data_num,txt,raw] = xlsread(filename,2);
-time = unique(data_num(:,2));
-
-study = combine_expt_data(['F'], txt, data_num);
-% Just used arbitrary area of 10
-
-
 %% RUN ME SECOND: Total resistance accounting for rest of membrane (constant resistance)
 
 area = 10;
 
 % Curve Fit for 1 hole
-b1 = 0.003808;
-b2 = 0.58974;
-b3 = 0.0037554;
+b1 = 5.3926e-10; % 0.003808;
+b2 = 0.58974; %0.58974;
+b3 = 5.9486e-09; %0.0037554;
 syms x
 curvef = symfun(b1*x^b2 + b3, x);
 %curvedfdx = diff(curvef, x); 
 % Convert to linspace
 time_min = 0;
-time_max = 165;
+time_max = 165*60;
 time_points = 10^3;
 time = linspace(time_min,time_max,time_points);
 time_interval = (time_max-time_min)/time_points;
@@ -218,55 +206,49 @@ Rt_curvederiv{1} = 1./ls_curvederiv;
 % plot(time(1:end-1), Rt_curvederiv)
 
 % Curve fit for 4 holes
-
-b1 = 0.0031114;
-b2 = 0.57692;
-b3 = 0.0021819;
-syms x
-curvef = symfun(b1*x^b2 + b3, x);
-%curvedfdx = diff(curvef, x); 
-% Convert to linspace
-time_min = 0;
-time_max = 165;
-time_points = 10^3;
-time = linspace(time_min,time_max,time_points);
-time_interval = (time_max-time_min)/time_points;
-ls_curve = [];
-for i = 1:size(time,2)
-    ls_curve(i) = double(curvef(time(i))); % convert sym to double for pw array
-end
-
-ls_curve2 = ls_curve(2:end);
-ls_curve1 = ls_curve(1:end-1);
-ls_curvediff = ls_curve2-ls_curve1;
-ls_curvederiv = ls_curvediff/(time_interval)*10;
-
-Rt_curvederiv{2} = 1./ls_curvederiv;
-
-%Rt_curve = 1/curvedfdx;
+% 
+% b1 = 0.0031114;
+% b2 = 0.57692;
+% b3 = 0.0021819;
+% syms x
+% curvef = symfun(b1*x^b2 + b3, x);
+% %curvedfdx = diff(curvef, x); 
+% % Convert to linspace
+% time_min = 0;
+% time_max = 165;
+% time_points = 10^3;
+% time = linspace(time_min,time_max,time_points);
+% time_interval = (time_max-time_min)/time_points;
+% ls_curve = [];
+% for i = 1:size(time,2)
+%     ls_curve(i) = double(curvef(time(i))); % convert sym to double for pw array
+% end
+% 
+% ls_curve2 = ls_curve(2:end);
+% ls_curve1 = ls_curve(1:end-1);
+% ls_curvediff = ls_curve2-ls_curve1;
+% ls_curvederiv = ls_curvediff/(time_interval)*10;
+% 
+% Rt_curvederiv{2} = 1./ls_curvederiv;
+% 
+% %Rt_curve = 1/curvedfdx;
 %% 1 hole model
-
+% Changed based on discussion with Prof Narayanaswamy
 %study = combine_expt_data(['H'], txt, data_num);
 
+
 syms t
-a = 0.00005; % in meters (diameter 100 microns, a is radius)
-D = 10^-16.5; %-15, -10
-%factor = 10^9;  % 13.1, 9.5?
-k = 10^-2; % D*factor;
-R_ss = 1/(4*k*a);
+a = 0.0001; % in meters (diameter 200 microns, a is radius)
+D = 10^-9.2;
+rho = 10^3;
+R_ss = 1/(4*rho*D*a);
 t_bound = 0.6*a^2/D;
-constant = 1; %0.25;
-first= 1; %0.25;
-second= 1; %1.25;
-third=1;
-fourth=1;
-fifth=1;
-f = symfun(R_ss*constant*(first*8/pi * (sqrt(D*t/(pi*a^2)) - second*(D*t/a^2)/pi + third*(D*t/a^2)^2/(8*pi) + fourth*(D*t/a^2)^3/(32*pi) + fifth*15*(D*t/a^2)^4/(512*pi))), t);
-f2 = symfun(R_ss*constant*(32/(3*pi^2) - (2/(pi^(3/2)*sqrt(D*t/a^2)))* (1 - 1/(3*(4*(D*t/a^2))) + 1/(6*(4*(D*t/a^2))^2) - 1/(12*(4*(D*t/a^2))^3))), t);
+f = symfun(R_ss*(8/pi * (sqrt(D*t/(pi*a^2)) - (D*t/a^2)/pi + (D*t/a^2)^2/(8*pi) + (D*t/a^2)^3/(32*pi) + 15*(D*t/a^2)^4/(512*pi))), t);
+f2 = symfun(R_ss*(32/(3*pi^2) - (2/(pi^(3/2)*sqrt(D*t/a^2)))* (1 - 1/(3*(4*(D*t/a^2))) + 1/(6*(4*(D*t/a^2))^2) - 1/(12*(4*(D*t/a^2))^3))), t);
 f_pw = [];
 % Create linspace for time to generate piecewise plot
 time_min = 0;
-time_max = 165;
+time_max = 165*60; % in seconds
 time_points = 10^3;
 time = linspace(time_min,time_max,time_points);
 for i = 1:size(time,2)
@@ -277,8 +259,6 @@ for i = 1:size(time,2)
     end
 end
 
-
-R_membrane = 508.4; % using arbitrary normalization area of 10mm^2 
 R_total = 1./((1/R_membrane) + (1./f_pw));
 
 % Plot resistance model with data fit
@@ -315,7 +295,7 @@ legend(p, ["Conc\_piecewise" "Conc\_datafit"]);
 
 offset = 3;
 for i = 1:size(study.data{1},2)
-    p(i+offset) = plot(study.time, study.data{1}(:,i), ...
+    p(i+offset) = plot(study.time*60, study.data{1}(:,i)*mass_conversion, ...
         'LineWidth', 0.25);
     hold on;
 end
@@ -410,7 +390,7 @@ model_4holes = R_integral_normalized;
 p = [];
 p(1) = plot(time_short, model_1hole);
 hold on;
-p(2) = plot(time_short, model_4holes);
+p(2) = plot(time_short, model_4hole);
 hold on;
 legend(p,["1 hole model" "4 hole model"]);
 
