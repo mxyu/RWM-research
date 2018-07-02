@@ -3,7 +3,7 @@ filename = '/Users/michelle/Documents/2018_CUMC/Research/Poloxamer-paper/data_PB
 [data_num,txt,raw] = xlsread(filename,2);
 time = unique(data_num(:,2));
 
-data_case = 'G';
+data_case = 'H';
 % H = 1 large hole (200um diameter) in 18% Poloxamer
 % G = 4 small holes (100um diameter) in 18% Poloxamer
 
@@ -34,7 +34,20 @@ legend(p, expt_numbers)
 % logx = log10(x(2:end));
 % logy = log10(y(2:end));
 
-%% Curve Fit model
+% Membrane resistance calculations based on back-calculated membrane area
+
+% Get membrane areas by experiment
+% Copied from combine_expt_data.m
+OUTCOME_COL = 9;
+expt_arr = ['H', 'G'];
+study.mem_area = {}; 
+for i=1:length(expt_arr)
+    [t, d] = get_time_by_data_matrix(data_num(idx_by_exp_type(txt,expt_arr(i)),[2 OUTCOME_COL]));
+    study.mem_area{i} = d;
+end
+
+
+%% Curve Fit model for 1 hole
 
 b1 = 0.003808;
 b2 = 0.58974;
@@ -44,6 +57,7 @@ syms x
 curvef = symfun(b1*x^b2 + b3, x);
 % fplot(curvef, 'Linewidth', 2)
 curvedfdx = diff(curvef, x);
+
 %% Plot current over time
 % fplot(curvedfdx, 'Linewidth', 2)
 % axis([0 170 0 0.002])
@@ -176,7 +190,7 @@ study = combine_expt_data(['F'], txt, data_num);
 
 area = 10;
 
-% Curve Fit fit
+% Curve Fit for 1 hole
 b1 = 0.003808;
 b2 = 0.58974;
 b3 = 0.0037554;
@@ -199,25 +213,51 @@ ls_curve1 = ls_curve(1:end-1);
 ls_curvediff = ls_curve2-ls_curve1;
 ls_curvederiv = ls_curvediff/(time_interval)*10;
 
-Rt_curvederiv = 1./ls_curvederiv;
+Rt_curvederiv = {};
+Rt_curvederiv{1} = 1./ls_curvederiv;
 % plot(time(1:end-1), Rt_curvederiv)
 
+% Curve fit for 4 holes
+
+b1 = 0.0031114;
+b2 = 0.57692;
+b3 = 0.0021819;
+syms x
+curvef = symfun(b1*x^b2 + b3, x);
+%curvedfdx = diff(curvef, x); 
+% Convert to linspace
+time_min = 0;
+time_max = 165;
+time_points = 10^3;
+time = linspace(time_min,time_max,time_points);
+time_interval = (time_max-time_min)/time_points;
+ls_curve = [];
+for i = 1:size(time,2)
+    ls_curve(i) = double(curvef(time(i))); % convert sym to double for pw array
+end
+
+ls_curve2 = ls_curve(2:end);
+ls_curve1 = ls_curve(1:end-1);
+ls_curvediff = ls_curve2-ls_curve1;
+ls_curvederiv = ls_curvediff/(time_interval)*10;
+
+Rt_curvederiv{2} = 1./ls_curvederiv;
 
 %Rt_curve = 1/curvedfdx;
-%% Play with coefficients of model terms
+%% 1 hole model
 
-study = combine_expt_data(['H'], txt, data_num);
+%study = combine_expt_data(['H'], txt, data_num);
 
 syms t
-a = 0.0001; % in meters (diameter 200 microns)
-D = 10^-10; %-15, -10
-factor = 10^9.5;  % 13.1, 9.5?
-k = factor*D;
+a = 0.00005; % in meters (diameter 100 microns, a is radius)
+D = 10^-16.5; %-15, -10
+%factor = 10^9;  % 13.1, 9.5?
+k = 10^-2; % D*factor;
 R_ss = 1/(4*k*a);
 t_bound = 0.6*a^2/D;
-constant = 0.25;
-first=0.25;
-second=1.25;
+constant = 1; %0.25;
+first= 1; %0.25;
+second= 1; %1.25;
 third=1;
 fourth=1;
 fifth=1;
@@ -238,7 +278,7 @@ for i = 1:size(time,2)
 end
 
 
-R_membrane = 335.0; % using arbitrary normalization area of 10mm^2 
+R_membrane = 508.4; % using arbitrary normalization area of 10mm^2 
 R_total = 1./((1/R_membrane) + (1./f_pw));
 
 % Plot resistance model with data fit
@@ -247,10 +287,10 @@ f1 = figure();
 p=[];
 p(1) = plot(time, R_total,'Linewidth', 2);
 hold on;
-p(2) = plot(time(1:end-1), Rt_curvederiv,'Linewidth', 2);
+p(2) = plot(time(1:end-1), Rt_curvederiv{1},'Linewidth', 2);
 hold on;
 legend(p, ["R\_piecewise" "R\_datafit"]);
-%
+
 
 % Trapezoidal integration
 R_total_recip = 1./R_total;
@@ -260,7 +300,7 @@ R_total_integral = cumtrapz(time_short,R_total_recip_short);
 R_integral_normalized = R_total_integral/10;
 
 % Test trapezoidal integration on Rtcurvederiv
-Rt_curvederiv_recip = 1./Rt_curvederiv;
+Rt_curvederiv_recip = 1./Rt_curvederiv{1};
 Rt_integral = cumtrapz(time_short,Rt_curvederiv_recip);
 Rt_integral_normalized = Rt_integral/10;
 
@@ -319,7 +359,7 @@ for i = 1:size(time,2)
 end
 
 
-R_membrane = 335.0; % using arbitrary normalization area of 10mm^2 
+%R_membrane = 335.0; % using arbitrary normalization area of 10mm^2 
 R_total = 1./((1/R_membrane) + 4*(1./f_pw)); % Treating holes as resistors in parallel
 
 % Plot resistance model with data fit
@@ -333,24 +373,26 @@ hold on;
 %legend(p, ["model" "data fit"]);
 %
 
+mem_area = mean(study.mem_area{2}(5,:));
+
 % Trapezoidal integration
 R_total_recip = 1./R_total;
 R_total_recip_short = R_total_recip(2:end);
 time_short = time(2:end);
 R_total_integral = cumtrapz(time_short,R_total_recip_short);
-R_integral_normalized = R_total_integral/10;
+R_integral_normalized = R_total_integral/mem_area;
 
 % Test trapezoidal integration on Rtcurvederiv
-Rt_curvederiv_recip = 1./Rt_curvederiv;
+Rt_curvederiv_recip = 1./Rt_curvederiv{2};
 Rt_integral = cumtrapz(time_short,Rt_curvederiv_recip);
-Rt_integral_normalized = Rt_integral/10;
+Rt_integral_normalized = Rt_integral/mem_area;
 
 % Plot final model with raw data
 f2 = figure;
 p=[];
 p(1) = plot(time_short, R_integral_normalized, 'Linewidth', 2);
 hold on;
-%p(2) = plot(time_short, Rt_integral_normalized, 'Linewidth', 2);
+p(2) = plot(time_short, Rt_integral_normalized, 'Linewidth', 2);
 %hold on;
 %legend(p, ["model" "data fit"]);
 
@@ -405,5 +447,4 @@ end
 %legend(p, labels);
 
 
-%% Membrane resistance calculations based on back-calculated membrane area
 
